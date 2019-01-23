@@ -1,0 +1,78 @@
+---
+title: 'ESM 244 HW1A: Space Launch Wrangling'
+author: "Kynan Witters Hicks"
+date: "January 22, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library, message=FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(RColorBrewer)
+
+```
+
+```{r data}
+
+agencies <- read.csv("agencies.csv")
+launches <- read.csv("launches.csv")
+
+```
+
+```{r select data to analyze}
+
+state_names <- levels(launches$state_code)
+
+#BR - Brazil
+#CN - China
+#CYM - 
+#F - France
+#I - Israel
+#I-ELDO
+#I-ESA
+#IL - Italy
+#IN - India
+#IR - Iran
+#J - Japan
+#KP
+#KR 
+#RU - Russia
+#SU - Soviet Union
+#UK - United Kingdom
+#US - United States
+
+
+launch_time <- launches %>% 
+  group_by(launch_year, state_code) %>% 
+  tally() %>% 
+  rename(launches = "n") %>% 
+  rename(state = "state_code")
+
+##Need to rename factor levels in "state" column
+##Merge columns into "other" category
+  
+
+launch_success <- launches %>% 
+  select(launch_date, launch_year, agency, state_code, category) %>% 
+  group_by(launch_year, state_code, category) %>% 
+  tally() 
+
+```
+
+```{r visualize}
+
+gglaunch <- ggplot(launch_time, aes(x = launch_year, y = launches, fill = state)) +
+  geom_bar(stat="identity") +
+  theme_bw()
+
+gglaunch
+
+#need to figure out color pallete - scale_fill_brewer(palette = "Spectral") not have enough
+
+```
+
