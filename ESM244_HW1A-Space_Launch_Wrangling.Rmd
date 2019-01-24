@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 library(RColorBrewer)
+library(plyr)
 
 ```
 
@@ -30,17 +31,17 @@ state_names <- levels(launches$state_code)
 
 #BR - Brazil
 #CN - China
-#CYM - 
+#CYM - Cayman Islands
 #F - France
 #I - Israel
-#I-ELDO
-#I-ESA
+#I-ELDO - 
+#I-ESA - 
 #IL - Italy
 #IN - India
 #IR - Iran
 #J - Japan
-#KP
-#KR 
+#KP - North Korea
+#KR - South Korea
 #RU - Russia
 #SU - Soviet Union
 #UK - United Kingdom
@@ -50,11 +51,25 @@ state_names <- levels(launches$state_code)
 launch_time <- launches %>% 
   group_by(launch_year, state_code) %>% 
   tally() %>% 
-  rename(launches = "n") %>% 
-  rename(state = "state_code")
-
-##Need to rename factor levels in "state" column
-##Merge columns into "other" category
+  dplyr::rename(launches = n) %>% 
+  dplyr::rename(state = state_code) %>% 
+  mutate(name = case_when(
+    grepl("J", state) ~ "Japan",
+    grepl("US", state)~ "United State",
+    grepl("BR", state)~ "Brazil",
+    grepl("F", state)~ "France",
+    grepl("CN", state)~ "China",
+    grepl("I", state)~ "Israel",
+    grepl("IL", state)~ "Italy",
+    grepl("IR", state)~ "Iran",
+    grepl("RU", state)~ "Russia",
+    grepl("SU", state)~ "Soviet Union",
+    grepl("UK", state)~ "United Kingdom",
+    grepl("KP", state)~ "North Korea",
+    grepl("KR", state)~ "South Korea",
+    grepl("CYM", state)~ "Cayman Islands",
+    grepl("I-ELDO", state)~ "Other",
+    grepl("I-ESA", state)~ "Other")) 
   
 
 launch_success <- launches %>% 
@@ -66,13 +81,39 @@ launch_success <- launches %>%
 
 ```{r visualize}
 
-gglaunch <- ggplot(launch_time, aes(x = launch_year, y = launches, fill = state)) +
+colors_man <- c("cadetblue2", 
+                "chocolate2",
+                "coral2",
+                "aquamarine2",
+                "darkgoldenrod2",
+                "brown2",
+                "darkorchid2",
+                "darkseagreen2",
+                "deeppink2",
+                "coral2",
+                "azure3",
+                "cornsilk2")
+
+names(colors_man) <- unique(launch_time$names)
+
+gglaunch <- ggplot(launch_time, aes(x = launch_year, y = launches, fill = name)) +
   geom_bar(stat="identity") +
-  theme_bw()
+  scale_fill_manual(values = colors_man) +
+    theme_bw()
 
 gglaunch
 
+
+
 #need to figure out color pallete - scale_fill_brewer(palette = "Spectral") not have enough
+#create own colors in 
+
+#df_name <- c("colors", "color1"...)
+#names(df_name) <- unique(launch_time$state)
+#scale_fill_manual(values = df_name)
+
+#substr - extract or replace strings in a character vector
+
 
 ```
 
