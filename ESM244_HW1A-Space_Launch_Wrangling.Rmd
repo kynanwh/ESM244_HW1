@@ -1,5 +1,5 @@
 ---
-title: 'ESM 244 HW1A: Space Launch Wrangling'
+title: 'ESM 244 HW1A: Space Launch Visualization & Vegetable + Fruit PCA'
 author: "Kynan Witters Hicks"
 date: "January 22, 2019"
 output: html_document
@@ -15,47 +15,38 @@ library(tidyverse)
 library(ggplot2)
 library(RColorBrewer)
 library(plyr)
+library(factoextra)
+library(ggbiplot)
+library(MASS)
+library(stringr)
 
 ```
 
-```{r data}
+#Part 1: Space Launch Visualization
+##Load Data
 
-agencies <- read.csv("agencies.csv")
-launches <- read.csv("launches.csv")
+```{r data, message=FALSE}
+
+agencies <- read_csv("agencies.csv")
+launches <- read_csv("launches.csv")
 
 ```
+
+##Wrangle Launch Data
 
 ```{r select data to analyze}
 
 state_names <- levels(launches$state_code)
-
-#BR - Brazil
-#CN - China
-#CYM - Cayman Islands
-#F - France
-#I - Israel
-#I-ELDO - 
-#I-ESA - 
-#IL - Italy
-#IN - India
-#IR - Iran
-#J - Japan
-#KP - North Korea
-#KR - South Korea
-#RU - Russia
-#SU - Soviet Union
-#UK - United Kingdom
-#US - United States
-
 
 launch_time <- launches %>% 
   group_by(launch_year, state_code) %>% 
   tally() %>% 
   dplyr::rename(launches = n) %>% 
   dplyr::rename(state = state_code) %>% 
+  arrange(desc(launch_year), desc(launches)) %>% 
   mutate(name = case_when(
     grepl("J", state) ~ "Japan",
-    grepl("US", state)~ "United State",
+    grepl("US", state)~ "United States",
     grepl("BR", state)~ "Brazil",
     grepl("F", state)~ "France",
     grepl("CN", state)~ "China",
@@ -70,50 +61,104 @@ launch_time <- launches %>%
     grepl("CYM", state)~ "Cayman Islands",
     grepl("I-ELDO", state)~ "Other",
     grepl("I-ESA", state)~ "Other")) 
-  
-
-launch_success <- launches %>% 
-  select(launch_date, launch_year, agency, state_code, category) %>% 
-  group_by(launch_year, state_code, category) %>% 
-  tally() 
 
 ```
 
-```{r visualize}
+##Visualize Space Launch Data 
 
-colors_man <- c("cadetblue2", 
-                "chocolate2",
-                "coral2",
-                "aquamarine2",
-                "darkgoldenrod2",
-                "brown2",
-                "darkorchid2",
-                "darkseagreen2",
-                "deeppink2",
-                "coral2",
-                "azure3",
-                "cornsilk2")
+```{r visualize, warning=FALSE}
 
-names(colors_man) <- unique(launch_time$names)
 
-gglaunch <- ggplot(launch_time, aes(x = launch_year, y = launches, fill = name)) +
-  geom_bar(stat="identity") +
-  scale_fill_manual(values = colors_man) +
-    theme_bw()
+#Extend color palette to include more colors. Doing it this way allows R to extrapolate colors out to 12 different colors rather than 9 (which is the origional number of colors in the "Spectral" palette).
+
+colourCount = length(unique(launch_time$name))
+getPalette = colorRampPalette(brewer.pal(12, "Spectral"))
+
+#ggplot
+
+gglaunch <- ggplot(launch_time, aes(x = launch_year, 
+                                    y = launches,
+                                    fill = name)) +
+  geom_bar(stat="identity", width = 0.8) +
+  scale_fill_manual(values = getPalette(colourCount)) +
+  ylab("Number of Launches") +
+  xlab("Year") +
+  labs(title = "Number of Rocket Launches by Country from 1957 - 2018", 
+       caption = "*Note: The Soviet Union was disbanded in 1991. \n Data from Economist GitHub - https://bit.ly/2TiCiiS.") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  size = 12),
+        axis.text = element_text(size = 10), 
+        plot.caption = element_text(hjust = 0.5, 
+                                    vjust = -1.0, 
+                                    size = 10),
+        legend.title = element_blank(),
+        aspect.ratio = 0.5) +
+  scale_x_continuous(breaks = c(seq(1955, 2025, by = 10)),
+                     limits = c(1955, 2020)) +
+  scale_y_continuous(breaks = c(seq(0, 160, by = 20)),
+                     limits = c(0, 145))
 
 gglaunch
 
+```
 
+#Part 2: Vegetable and Fruit PCA
+##Load Data
 
-#need to figure out color pallete - scale_fill_brewer(palette = "Spectral") not have enough
-#create own colors in 
+```{r, message=FALSE}
 
-#df_name <- c("colors", "color1"...)
-#names(df_name) <- unique(launch_time$state)
-#scale_fill_manual(values = df_name)
+###Part 2: Load Data
 
-#substr - extract or replace strings in a character vector
-
+usda_nutrients <- read_csv("usda_nutrients.csv")
 
 ```
 
+##Wrangle Data
+
+```{r}
+
+#### Part 2 - PCA Data Wrangle
+
+veggy_fruit <- usda_nutrients %>% 
+  filter(FoodGroup == "Vegetables and Vegetable Products"|
+           FoodGroup == "Fruits and Fruit Juices") %>% 
+  filter(str_detect(ShortDescrip,"RAW"))
+
+```
+
+##Conduct PCA
+
+```{r}
+
+### Part 2: PCA
+
+nutrient_pca <- prcomp(veggy_fruit[9:30], scale = TRUE)
+
+```
+###PCA Results: 
+1. 38.6% of variance is explained in the first two principle components. 
+2. 83.9% of variance is explained by PC11 - good cutoff? 
+3. The first two principal components explain the most variation in phosphorus and protein content while the second principal component is explained most by vitamin B and Selenium content 
+
+
+##Visualize PCA
+
+```{r}
+
+fviz_pca_biplot(nutrient_pca,
+                habillage = veggy_fruit$FoodGroup,
+                palette = c("#FC4E07", "#E7B800"),
+                addEllipses = TRUE,
+                label = "var",
+                repel = TRUE,
+                title = "Biplot of PCA for Nutrients in Fruits and Vegetables") +
+  theme_minimal() +
+  theme(legend.position = 'bottom')
+```
+
+###Trends
+
+1. Fruits and fruit juices don't have much protein, iron, or zinc in them, while many vegetables do. 
+2. Surgar and vitamin C correlate to being present in many fruits and vegetables
+3. Sugar and vitamin C are positively correlated while sugar is negatively correlated with protein, zinc, and iron. 
